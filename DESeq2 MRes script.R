@@ -51,7 +51,8 @@ for(i in (files)){
  
   
   SampleTable$CONCENTRATION <- as.factor(SampleTable$CONCENTRATION)
-  
+
+#DESeq created with Vessel_ID and concentration of each cell line, chemical and concentration
   
   dds <- DESeqDataSetFromMatrix(countData = counts,
                                 colData = SampleTable,
@@ -61,7 +62,7 @@ for(i in (files)){
   dds <- estimateSizeFactors(dds)
   sizeFactors(dds)
   
-  
+#Normalised counts created and using p values cutoff of 0.05 and log fold change cutoff of 0.58
   dds <- DESeq(dds)
   res <- results(dds)
   comparisons <- resultsNames(dds)
@@ -77,7 +78,7 @@ for(i in (files)){
         as_tibble() #convert the results table into a tibble
       sigOE <- res_table %>%
         filter(padj < padj.cutoff & abs(log2FoldChange) > lfc.cutoff)
-      #write.table(sigOE, file = paste0(j, ".txt", i)) #need to add cell line & chemical?
+      #table of results wriiten to include all cell lines, chemicals and concentrations in the loop
       write.table(sigOE, file = paste0(gsub("_counts.csv", "_DESeq", i), "_", j, ".txt"), col.names = T, row.names = T, quote = F, sep = "\t")
     }
   res_norm <- lfcShrink(dds=dds, coef=2, type="normal")
@@ -85,19 +86,14 @@ for(i in (files)){
   
 
   save(res_norm, file = "res_norm.RData")
-  
-  
+ 
+#MA plots created for all cell lines and chemicals  
   png(gsub("_counts.csv", "_MA.png", i))
   ma <- plotMA(res_norm)
   print(ma)
   dev.off()
   
-  png(gsub("_counts.csv", "_MA2.png", i))
-  ma2 <- plotMA(res_norm, alpha = 0.05)
-  print(ma)
-  dev.off()
-  
-  
+#Volcank plots created for all cell lines and chemicals
   plot_EnhancedVolcano <- EnhancedVolcano(res_norm,
                                           lab = rownames(res),
                                           x = "log2FoldChange",
@@ -110,7 +106,7 @@ for(i in (files)){
      rownames_to_column(var="gene") %>%
      as_tibble()
    
-   
+#gg plots created for the top 20 significantly expressed genes for each cell line and chemical
    top20_sigOE_genes <- res_table %>%
      arrange(padj) %>%
      pull(gene) %>%
@@ -126,7 +122,7 @@ for(i in (files)){
    pivot_top20_sigOE_join <- pivot_top20_sigOE %>%
      left_join(dplyr::select(SampleTable, X, CONCENTRATION), by = c("samplename" = "X"))
    
-   
+#ggplot appearance created with x and y axis defined, title and colours for defining concentrations   
    ggplot <- ggplot(pivot_top20_sigOE_join,aes(x = gene, y = normalised, color = CONCENTRATION)) +
      geom_point() +
      scale_y_log10() +
@@ -136,13 +132,16 @@ for(i in (files)){
      theme_bw() +
      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
      theme(plot.title = element_text(hjust = 0.5))
-   
+
+#PCA plots created for all cell lines and chemicals  
    ggsave(ggplot, filename = gsub("_counts.csv", "_ggplot.png", i))
     rld <- vst(dds, blind=TRUE)
   pca <- plotPCA(rld, intgroup="CONCENTRATION") 
   ggsave(pca, filename = gsub("_counts.csv", "_pca.png", i))
   vst_write <- assay(vst(dds, blind=FALSE))
   write.csv(as.data.frame(vst_write), file=gsub("_counts.csv", "_results.csv", i))
+  
+#code written for results formatted to be ready for inputting into BMDExpress platform
   
   vst_write_copy <- vst_write # COPY SO WE DONT RUIN DATA
   colnames(vst_write_copy) <- NULL # Getting rid of colnames so we can append to data
